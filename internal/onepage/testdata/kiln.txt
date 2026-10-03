@@ -1,0 +1,112 @@
+# A sheet using every block, for a project that is not memo, so the renderer is seen to take nothing from memo.
+title Kiln, on one sheet
+
+actor maker  amber   the potter
+actor oven   cyan    the kiln
+actor log    green   the firing log
+actor shelf  violet  the store room
+
+line arrow work moves
+line dotted @log reads or writes the log
+line planned @log planned
+mark balloon part
+mark flag asked of a studio
+mark diamond @maker your attention
+
+::: titleblock
+cell id | 1 · Premise · sheet 1 of 1
+wordmark kil@log{n}
+motto Fire it once
+para A kiln, `kiln`, with a log.
+cell problem | Problem — without kiln
+lead Pots crack:
+point P1 | Nobody knows the last firing. | {1} ▲1
+point P2 | Shelves overflow: `kiln ls | wc`. | {2}
+cell answer | Solution — with kiln
+big The @shelf{store room} keeps pots; @log{the log} keeps firings.
+para **What happened:** each firing.
+cell attn | Your attention goes here
+item ◆1 | **Loading:** what goes in.
+:::
+
+view 2 WORKFLOW | one firing | a lane for each actor
+```svg
+<svg width="10" height="10"><rect class="bx oven"/></svg>
+```
+
+::: swimlane
+lane @maker
+lane @oven | the kiln | itself
+lane @log
+phase 1 | LOAD
+phase 2 | FIRE
+box load @maker 1.1-2 | **load the kiln** ◆1 | `kiln load`
+text @maker 2 | or wait for | a full shelf
+box heat @oven 1.2 chip | `kiln heat`
+box pots @oven 2 stack | **a firing** | ×N, one by one ▲1
+box entry @log 1.1-2 | FIRING LOG | {1} the last firing
+box alarm @log 2 planned | an @log{alarm}
+box bell @log 2 note | rings when | it cracks
+arrow load entry
+arrow load heat
+arrow heat pots
+arrow pots heat dotted
+arrow entry alarm planned
+arrow alarm bell
+detail A | pots alarm
+:::
+
+::: details
+detail A | Detail A — when a pot cracks | **the log refuses** a guess.
+rung @oven | 1 · Cool | the kiln itself | It cools slowly.
+rung @log planned | 2 · Alarm | the log's own bell | It rings.
+notes | General notes — what the kiln asks of a studio
+note 1 | `vent` stays open. | Always.
+foot Each flag marks where its note applies.
+:::
+
+view 3 SYSTEM | the pieces | balloons key the drawing
+::: assembly
+person potter @maker A1-A2 | POTTER | at the wheel
+box kiln @oven B1 | KILN | `kiln fire` | [C6][C10] | 📄 cone chart
+box pots @oven B2 stack | **a firing** | ×N, one by one
+group room @shelf C1-C2 | STORE ROOM ▲1
+box shelf @shelf C1 planned | SHELF {2} | a rack
+box cart @shelf C2 | CART | on wheels
+rail belt @shelf D1-D2 | BELT
+valve check @oven | ▲1
+store log @log B3-C3 | FIRING LOG {1} | one file per kiln | [FIRINGS] [GLAZES]
+arrow potter kiln
+arrow potter pots
+arrow kiln shelf planned
+arrow pots cart
+arrow cart belt via check
+arrow room log dotted
+arrow log potter @oven | read back | before the next load
+parts PARTS LIST | what the kiln is made of
+part 1 @log | The log | one file per kiln | Firings outlive the potter.
+part 2 @shelf planned | The `shelf` | a rack | Pots wait.
+:::
+
+view 4 HOW-TOS | what a potter types | real output
+::: spec
+column
+howto 4.1 | Fire a load | `kiln fire` @maker or ask `helper` @oven
+caption It fires **once**.
+```term beside
+$ kiln fire -cone 6
+```
+caption Beside the terminal.
+column
+howto 4.2 | Read the log | `kiln log <id>` @maker
+```term
+$ kiln log a88
+firing {i:a88}  {ok:done}  cone 6
+  note {h:4e72a67} <hot> & \{x}
+       cracked {q:Why?} {a:a)}
+```
+more The log **keeps** each firing.
+more It is never pruned.
+:::
+
+mark more click for more

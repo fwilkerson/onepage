@@ -1,0 +1,58 @@
+# memo's one-page design as it stood before 61f2e93 (`git show 61f2e93^:docs/one-page.html`), its claims transcribed
+# into the text source's grammar with nothing marked planned, as that page marked nothing. It showed the aligner, the
+# recall skill, the plugin, `memo export`, publishing and a land that prints cost as built, none of which were: a case
+# the onepage-audit agent is to catch.
+title memo, on one page
+
+actor you    amber   the developer
+actor agent  cyan    Claude Code
+actor memo   green   the tool and its store
+actor repo   violet  git
+
+::: titleblock
+cell id | memo
+motto The memory of a project built with agents.
+cell answer | Two places
+big The @repo{repository} keeps what is true now; @memo{memo} keeps what happened.
+para One store, in the main checkout's `.memo/`, found from any worktree through git's common directory and never committed. It is local SQLite behind the unit of work that pgx also satisfies, so a shared server would be an addition, not a rewrite. `memo export` hands history to another developer.
+para memo keeps tasks, then their issue; runs and work files; retrospectives over the runs; notes of four kinds; and reads: what each run opened.
+para Publishing is the one way out to other people: a task published to GitHub hands its state and assignee to the issue, and memo keeps the rest.
+:::
+
+::: details
+detail A | When the code disagrees with the task | memo refuses a decision that cites no source and a question that shows no search, and flags a run that edits its signed criteria, deletes a test or adds a skip.
+rung @agent | 1 · Decide | the run itself | Does the evidence rank it? ADRs, then guidance, then code and tests, then a precedent.
+rung @memo | 2 · Aligner | memo's own agent | In a fresh context, given only the frame, the adaptation, guidance, ADRs and history. Its verdict reaches memo directly, never through the implementing agent: headless as structured output from its own run, interactive through memo itself.
+rung @you | 3 · Escalate | you answer | Block on its questions, each with options, a lean, and the searches run; `memo inbox`, and you answer each in a line.
+detail B | How an agent finds more | the start is chosen
+rung @memo | Injected | memo | The task, its linked notes and what its dependencies decided.
+rung @agent | Discovered | the discover agent | Maps memo's history with the code, in the frame; the map is kept with the run.
+rung @agent | Reached | the recall skill | The recall skill says when to look: before choosing an approach, on a surprise, before escalating.
+rung @memo | Measured | memo's read log | Every read is recorded against its run, so "did it look when it should have" is a query; `claude plugin eval` checks, with and without the plugin, that the recall skill triggers on the prompts it should.
+:::
+
+::: assembly
+box template @repo A1 | GO-TEMPLATE | layout, recipes, hooks, settings, conventions
+box plumb @repo B1 | PLUMB | arch and guidance tests, e2e, `just dev`
+box plugin @agent C1 | MEMO PLUGIN | work, write-task, curate, retro and recall skills, | the discover agent, hooks
+box why @memo A2 | MEMO WHY {1} | from code back to history
+box brief @memo B2 | MEMO BRIEF {2} | brief in, work file out
+arrow brief why
+parts PARTS LIST | what memo is made of
+part 1 @memo | `memo why` | code back to history | Code leads back to the reasons behind it.
+part 2 @memo | `memo brief` | a task and its history | A run starts with history.
+:::
+
+::: spec
+column
+howto 6 | Land | `memo work land` @memo
+caption memo re-runs the gates on the rebased diff and lands only on a pass and a recorded review.
+```term
+$ memo work land
+landed  2 commits on main
+adapted 1, for you
+cost    $1.84, 41 min
+```
+howto 7 | Get /work in a new project | the plugin @you
+caption A new project gets `/work` from the memo plugin.
+:::

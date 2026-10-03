@@ -1,0 +1,185 @@
+# memo's one-page design: what memo is and why. spec.md says it at length.
+
+title memo, on one sheet
+
+actor you    amber   the developer
+actor agent  cyan    an agent, each job in a fresh context
+actor memo   green   the tool and its store
+actor repo   violet  git
+
+line arrow work moves
+line dotted @memo reads or writes the store
+mark balloon part
+mark flag asked of a project
+mark diamond @you your attention
+mark more more
+
+::: titleblock
+cell id | 1 · Premise · sheet 1 of 1
+wordmark mem@memo{o}
+motto The memory and the process of a project built with agents
+para A command-line tool and a local web page over one store per repository; a skill or brief for each role an agent plays; and drains that work the queue unattended, each task in its own checkout.
+
+cell problem | Problem — without memo
+lead Agents forget everything between sessions, and do what is cheapest rather than what they are told:
+point P1 | A fresh session rediscovers the code and guesses at past decisions. | {1}
+point P2 | The developer is asked how code should work, and not what the product should do. | {9}
+point P3 | An agent takes the cheapest path to whatever "done" is checked: it narrows the task and dismisses what review finds. | {4} {7}
+point P4 | Telling an agent how to behave changes nothing; a required output or a failing check does. | {11}
+point P5 | An agent copies the nearest code, so copies of a rule drift apart. | {10} ▲2
+point P6 | Several agents working at once trip over each other. | {5} ▲4
+
+cell answer | Solution — with memo
+big The @repo{repository} keeps what is true now; @memo{memo} keeps what happened and why.
+para **Done is an acceptance test, written in planning before the implementer starts.** Fresh agents review and check, and the implementer fixes every confirmed defect and dismisses none.
+para **Human attention is the scarcest resource.** A project is healthy when only product questions reach the developer and escaped defects trend down.
+
+cell attn | Your attention goes here, and only here
+item ◆1 | **Planning** with the tech lead: you judge what each task will do, never its code.
+item ◆2 | **Product questions**, batched in the inbox, answered in a word.
+item ◆3 | **A retrospective**: patterns across runs, as a handful of decisions.
+item ◆4 | **Curation**: confirming where each recurring lesson goes.
+item ◆5 | **A defect you notice**: traced to the task, run and step that let it through.
+:::
+
+view 2 WORKFLOW | one task, from a note to landed code | a lane for each actor · time runs left to right
+
+::: swimlane
+lane @you
+lane @agent | fresh agents, | one job each
+lane @memo | the tool and | its store
+lane @repo
+
+phase 1 | NOTE AND PLAN
+phase 2 | DRAIN
+phase 3 | RUN: A FRESH AGENT FOR EACH JOB
+phase 4 | LAND
+phase 5 | LOOK BACK
+
+# 1 note and plan
+box note @you 1.1 | **write a note** | any time
+box plan @you 1.2 | **plan it** ◆1 | judge contracts
+box lead @agent 1.2 | **TECH LEAD** | scope and order, | the how decided
+more The tech lead does its own discovery, decides the order and scope of the tasks, and brings the how already decided. It asks you only what the software should do, and applies a principle you have stated before rather than asking again.
+box tasks @memo 1.1-2 | TASKS ▲3 | story · bug · refactor | acceptance tests | written here
+more A story carries its contract and its acceptance test. A bug carries its reproduction, run in planning, and its class with the search behind it. A refactor names a rule, its home to be and its copies, in domain words. memo refuses a task that lacks what its kind requires.
+arrow note lead
+arrow lead plan
+arrow plan lead
+arrow lead tasks
+
+# 2 drain
+box drainit @you 2 chip | **drain a label**
+box queue @memo 2 | QUEUE | by priority, | dependencies first | ◂ surveys' tasks, from 5
+box worktree @repo 2 | **own checkout** ▲4 | on its own branch
+arrow tasks queue
+arrow drainit queue
+arrow queue worktree
+
+# 3 run
+box ask @you 3.2-4 | **answer product questions** ◆2 | nothing else reaches you
+box mend @agent 3.1 note | rebaser: | test setup
+box impl @agent 3.2 | IMPLEMENT | plan names | each rule's home
+more Before any code, the implementer lists each rule the change computes and where it is computed today, and builds on that home. It works until the acceptance test and the check command pass. It may widen the task, with a reason; it may not narrow it, or touch the acceptance test.
+box review @agent 3.3 | REVIEW ▲2 | findings and | their siblings, | each a failing test
+more A fresh reviewer, given the task and the diff and nothing of the implementer's reasoning, backs each finding with a failing test, and searches the code the change reads for other instances of its class. There are two rounds.
+box check @agent 3.4 | CHECK | real or not; | binds the run
+more A fresh checker runs each finding's evidence and judges only whether the defect is real, never whether it is worth fixing. A confirmed finding binds the run: the implementer fixes it and cannot dismiss it. Last, the checker confirms each fix by the reviewer's own test.
+box accept @memo 3.1 | ACCEPTANCE | its test fails | on main
+more memo runs the task's acceptance test against main: a story's behaviour must be missing, and a bug must reproduce. If main moved and only the setup broke, the rebaser repairs the setup and may not change an assertion. A bug whose test passes on main asks you "already fixed?".
+arrow worktree accept
+arrow accept impl
+arrow impl review
+arrow review check
+arrow impl ask
+arrow ask impl
+detail A | accept impl review check
+
+# 4 land
+box rebaser @agent 4 note | rebaser: | on a conflict
+box land @memo 4 | LAND ▲1 | rebase, checks, | test unchanged, | fixes held | @memo{**memo decides**}
+box main @repo 4 | **main** | fast-forwarded
+arrow check land
+arrow land main
+
+# 5 look back
+box look @you 5.1-2 | ◆3 **retrospective** | ◆4 **curation** | ◆5 **a defect:** trace
+box surveys @agent 5.3 | SURVEYS | debt: a rule | and its copies | mutation: a | verdict per mutant
+box measures @memo 5.1 | MEASURES | product questions | escapes per 1k lines | cost and context
+box lessons @repo 5.2-3 | **check, standard,** | **glossary** ▲5 | from a pattern | that recurs
+arrow land measures
+arrow measures surveys
+arrow measures look
+arrow look lessons
+:::
+
+::: details
+detail A | Detail A — where a run's stop goes | **The inbox holds product questions only**; every other stop has an owner.
+rung @memo | 1 · Retry | memo | A usage limit or a logged-out tool is retried, and a drain stops on a failure every task would share.
+rung @agent | 2 · Resolve | an agent | A conflict, or a test's setup broken by main moving, goes to the rebaser. A broken tool becomes a task the run waits on.
+rung @you | 3 · Ask | you answer | What the software should do, look like or cover, with options, a lean, and before-and-after output or images. The answer requeues the task, and a principle in it joins the standard.
+
+notes | General notes — what memo asks of a project
+note 1 | A check command runs every check, and a black-box suite drives the built product from outside. | Landing runs it.
+note 2 | A glossary of domain words and a standard of principles, both checked in. | The tech lead, reviewer and debt survey use them.
+note 3 | Prototypes checked in, where every run can see them. | A page's look.
+note 4 | No fixed ports and no state outside a checkout, so runs can go in parallel. | Drains run side by side.
+note 5 | Guidance that runs may edit; a check refuses any widened permission. | Drains improve guidance too.
+foot On the drawings, each flag marks where its note applies; hover either to find the other.
+:::
+
+view 3 SYSTEM | the key pieces, and why each exists | balloons key the drawing to the parts list · hover either to find the other
+
+::: assembly
+person dev @you A1-A7 | DEVELOPER | you
+box notes @memo B1 | NOTES {2} | an idea, any time | **plan it** opens | a session
+box lead @agent B2 | TECH LEAD {3} | a skill in your session | tasks and their tests
+box drain @memo B3-B4 | DRAIN {5} | a label's tasks | by priority, honouring | dependencies, within | a budget; drains run | side by side ▲4
+box inbox @memo B5 | INBOX {9} | product questions only
+box retro @agent B6 | RETRO · CURATION {11} | patterns → decisions
+box viewer @memo B7 | VIEWER {12} | patterns before items
+
+group run C1-C4 | A RUN · ONE JOB PER FRESH AGENT {6}
+box rebaser @agent C1 | REBASER | brings a run up to | date with main
+box impl @agent C2 | IMPLEMENTER | the change, built on | each rule's home
+box reviewer @agent C3 | REVIEWER {7} | findings and siblings, | each a failing test
+box checker @agent C4 | CHECKER | real or not; | whether a fix holds
+store store @memo C5-C6 | MEMO STORE {1} | one file per repository | [NOTES] [TASKS {4}] [RUNS] | [FINDINGS] [ESCAPES]
+box surveys @agent C7 | SURVEYS {10} | debt survey, | mutation survey
+
+valve land @memo | {8} ▲1
+group repo @repo D1-E4 | THE REPO · WHAT IS TRUE NOW
+rail main @repo D1-D4 | MAIN
+box truth @repo E1-E4 | WHAT IS TRUE NOW | @repo{■} code and tests | @repo{■} prototypes ▲3 | @repo{■} glossary, standard {13} | @repo{■} guidance ▲5
+
+arrow dev notes
+arrow dev lead
+arrow dev drain
+arrow dev inbox
+arrow dev retro
+arrow dev viewer
+arrow notes lead
+arrow drain run
+arrow run main via land
+arrow main truth
+arrow run store dotted @memo | found from every checkout
+arrow inbox store dotted
+arrow surveys store dotted @memo | tasks from evidence
+arrow store viewer dotted
+arrow store truth @agent | a pattern that recurs | → a check, the standard
+
+parts PARTS LIST | what memo is made of, and why each part exists
+part 1 @memo | The store | notes, tasks, runs, questions, findings, escapes; one file per repository | What happened and why outlives every session, and the store arbitrates every run writing at once.
+part 2 @memo | Notes | an idea not yet work, with a button to plan it | An idea reaches agents without the developer opening a session first.
+part 3 @agent | Tech lead | a skill: discovery, scope, order, tasks | Scope and contract are set before any code by an agent with no diff to keep small, while the developer judges only what.
+part 4 @memo | Tasks | a story, bug or refactor, each with its own proof | Done is an acceptance test written before the implementer starts, so the implementer cannot narrow the task.
+part 5 @memo | Drains | a label's tasks by priority, unattended | Work gets done while the developer is elsewhere, within a budget.
+part 6 @agent | A run | rebaser, implementer, reviewer and checker, each fresh | One job per context limits bias and spreads the context.
+part 7 @agent | Review | findings and siblings, each a failing test a checker runs | The author is the weakest judge of its own work, so a confirmed finding binds it.
+part 8 @memo | Landing | rebase, the check command, the acceptance test unchanged, the fixes held | memo, not the agent, decides whether work lands.
+part 9 @you | Inbox | product questions only, batched | The developer's attention goes only where only they can decide.
+part 10 @agent | Surveys | the debt survey and the mutation survey | Agents copy the nearest code, so the codebase's health is budgeted for.
+part 11 @agent | Retrospective and curation | patterns as decisions; a category of escape seen twice gets a check | The process improves from evidence rather than from words.
+part 12 @memo | Viewer | a local page: the inbox, drains, health, notes, landed pages | The project's state at a glance, patterns before items.
+part 13 @repo | Glossary and standard | domain words; the principles review judges by | Rules have names, and the developer's answers become the bar.
+:::
