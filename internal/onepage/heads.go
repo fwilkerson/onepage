@@ -15,21 +15,24 @@ const (
 
 var strokes = map[string]float64{"w": 1.4, "ph": 1.3, "d": 2}
 
-func headLength(class string) float64 {
+func (fc faces) headLength(class string) float64 {
 	f := strings.Fields(class)
-	if slices.Contains(f, "heavy") {
+	switch {
+	case slices.Contains(f, "heavy"):
 		return heavyHead
+	case f[0] == "d":
+		return headStrokes * fc.dotted
 	}
 	return headStrokes * strokes[f[0]]
 }
 
-func room(class string) int {
-	return int(math.Ceil(1.9 * headLength(class)))
+func (fc faces) room(class string) int {
+	return int(math.Ceil(1.9 * fc.headLength(class)))
 }
 
 func (r *renderer) arrive(line int, d, class string, twoHeads bool, a, b string) {
 	start, end, bent := straight(d)
-	need := room(class)
+	need := r.faces.room(class)
 	switch {
 	case !bent:
 	case end < float64(need):

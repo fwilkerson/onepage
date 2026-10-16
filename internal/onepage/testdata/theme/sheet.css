@@ -1,0 +1,24 @@
+@font-face {
+  font-family: "Plain Sans";
+  src: url("fonts/Plain.woff2") format("woff2");
+}
+
+:root {
+  color-scheme: dark;
+  --canvas: #101112;
+  --surface: #1e1f22;
+  --surface-raised: #2b2d30;
+  --surface-sunken: #17181b;
+  --line: #393b40;
+  --line-strong: #797d86;
+  --ink: #dfe1e5;
+  --ink-2: #a4a9b3;
+  --you: #f2c55c;
+  --you-tint: #37301f;
+  --agent: #6ba6f5;
+  --ref: var(--agent);
+  --syn-name: #a3b8d6;
+  --font-sans: "Plain Sans", sans-serif;
+  --font-mono: ui-monospace, monospace;
+  --space-1: 4px;
+}

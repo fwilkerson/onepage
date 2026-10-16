@@ -26,7 +26,6 @@ const (
 	cmpH        = 26
 	cmpGap      = 5
 	cmpInset    = 14
-	labelPitch  = 14
 	railTurn    = 12
 )
 
@@ -101,11 +100,11 @@ func (r *renderer) drawing(a *assembly) {
 		case "group":
 			p.natural = tabInset + w + 12 + 10 - 2*groupPad
 		case "person":
-			p.natural, p.h = max(60, w)+padLeft+padRight, figure+height(p.lines, false)
+			p.natural, p.h = max(60, w)+padLeft+padRight, figure+r.height(p.lines, false)
 		case "rail":
 			p.natural, p.h = max(0, 2*(6+w+padRight+clear-cellGap)), 0
 		default:
-			p.natural, p.h = w+padLeft+padRight, height(p.lines, false)
+			p.natural, p.h = w+padLeft+padRight, r.height(p.lines, false)
 		}
 		switch it.kind {
 		case "stack":
@@ -662,10 +661,10 @@ func (r *renderer) drawing(a *assembly) {
 		in := (c.in + 2) % 4
 		room0, room1 := 0, 0
 		if c.a.style == "dotted" {
-			room0 = room(class) + hop
+			room0 = r.faces.room(class) + hop
 		}
 		if c.to.kind != "rail" {
-			room1 = room(class) + 2 + hop
+			room1 = r.faces.room(class) + 2 + hop
 		}
 		own := []seg{
 			segOf(c.p, point{c.p.x + step[c.out].x*room0, c.p.y + step[c.out].y*room0}),
@@ -826,7 +825,7 @@ func (r *renderer) drawing(a *assembly) {
 		}
 		if c.label != nil {
 			for i, l := range c.label.lines {
-				r.line(l, c.label.x0-padLeft, c.label.x1-c.label.x0+padLeft+padRight, c.label.base+i*labelPitch)
+				r.line(l, c.label.x0-padLeft, c.label.x1-c.label.x0+padLeft+padRight, c.label.base+i*r.faces.labelPitch)
 			}
 		}
 	}
@@ -879,7 +878,7 @@ func (r *renderer) label(c *conn, bounds rect, all []*placed, callouts []*callou
 		lb.lines = append(lb.lines, l)
 		w = max(w, int(math.Ceil(l.width())))
 	}
-	h := labelPitch*(len(lb.lines)-1) + 12
+	h := r.faces.labelPitch*(len(lb.lines)-1) + 12
 	drawn := append([]point{c.start}, c.way[c.from0+1:]...)
 	var stretches []seg
 	for i := 1; i < len(drawn); i++ {
@@ -978,13 +977,13 @@ func chipsOnly(l sline) sline {
 func cmpWidth(l sline) int {
 	w := 0.0
 	for _, rn := range l.runs {
-		w = max(w, textWidth(rn.s, "tc")+float64(len(rn.marks)*(2*balloonR+4)))
+		w = max(w, textWidth(rn.s, "tc", rn.faces)+float64(len(rn.marks)*(2*balloonR+4)))
 	}
 	return int(math.Ceil(w)) + 2*padLeft
 }
 
 func (r *renderer) lineAt(p *placed, i int) (int, int) {
-	x, base := p.x+padLeft, p.y+16
+	x, base := p.x+padLeft, p.y+r.faces.top
 	switch p.kind {
 	case "stack":
 		x, base = x+stackX, base+stackY
@@ -1093,7 +1092,7 @@ func (r *renderer) part(p *placed) {
 		r.w("  <circle cx=\"%d\" cy=\"%d\" r=\"15\" class=\"%s\"/>", cx, y+16, class)
 		r.w("<path d=\"M%d,%d C%d,%d %d,%d %d,%d C%d,%d %d,%d %d,%d Z\" class=\"%s\"/>\n",
 			cx-30, y+figure-1, cx-30, y+45, cx-16, y+37, cx, y+37, cx+16, y+37, cx+30, y+45, cx+30, y+figure-1, class)
-		r.lines(p.lines, y+figure+16, func(l sline) (int, int) {
+		r.lines(p.lines, y+figure+r.faces.top, func(l sline) (int, int) {
 			lw := int(math.Ceil(l.width()))
 			return cx - lw/2 - padLeft, lw + padLeft + padRight
 		})

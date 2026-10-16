@@ -168,6 +168,7 @@ func TestRenderRefusesAnUnknownName(t *testing.T) {
 	const lane = "::: swimlane\nlane @you\nphase 1 | P\nbox a @you 1 | A\n"
 	const asm = "::: assembly\nbox a @you A1 | A\n"
 	const attn = "::: titleblock\ncell attn | A\nitem ◆1 | one\n:::\n"
+	const dots = "::: titleblock\ncell attn | A\nitem ●1 | one\n:::\n"
 
 	for _, c := range []struct {
 		name string
@@ -209,6 +210,9 @@ func TestRenderRefusesAnUnknownName(t *testing.T) {
 		{"flag in a box", ok + lane + "box b @you 1 | B ▲7\n:::\n", onepage.ErrUnknownNote, 13},
 		{"balloon in a box", ok + lane + "box b @you 1 | {9} B\n:::\n", onepage.ErrUnknownPart, 13},
 		{"diamond in a box", ok + attn + lane + "box b @you 1 | B ◆6\n:::\n", onepage.ErrUnknownDiamond, 17},
+		{"dot", ok + dots + "::: titleblock\ncell id | x\npara see ●6\n:::\n", onepage.ErrUnknownDot, 15},
+		{"dot in a box", ok + dots + lane + "box b @you 1 | ●6 B\n:::\n", onepage.ErrUnknownDot, 17},
+		{"diamond written as a dot", ok + attn + "::: titleblock\ncell id | x\npara see ●1\n:::\n", onepage.ErrUnknownDot, 15},
 		{"arrow through a box", ok + lane + "box b @you 1 | B\nbox c @you 1 | C\narrow a c\n:::\n", onepage.ErrNoWay, 15},
 		{"too wide", ok + "::: swimlane\nlane @you\nphase 1 | P\nbox a @you 1 | " + strings.Repeat("wide ", 300) + "\n:::\n", onepage.ErrTooWide, 9},
 		{"balloon in a part", ok + asm + "box b @you B1 | {9} B\n:::\n", onepage.ErrUnknownPart, 11},
@@ -269,6 +273,9 @@ func TestRenderRefusesAnUnknownName(t *testing.T) {
 	}
 	if _, err := onepage.Render("s.txt", []byte(ok+"::: titleblock\ncell id | x\npara see ◆1\n:::\n"+attn)); err != nil {
 		t.Errorf("a diamond before its item: %v", err)
+	}
+	if _, err := onepage.Render("s.txt", []byte(ok+"mark dot @you yours\n::: titleblock\ncell id | x\npara see ●1\n:::\n"+dots)); err != nil {
+		t.Errorf("a dot before its item: %v", err)
 	}
 }
 

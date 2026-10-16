@@ -8,11 +8,13 @@ import (
 )
 
 type renderer struct {
-	doc   *doc
-	path  string
-	b     strings.Builder
-	errs  []error
-	mores []string
+	doc    *doc
+	path   string
+	faces  faces
+	themed bool
+	b      strings.Builder
+	errs   []error
+	mores  []string
 }
 
 func (r *renderer) fail(line int, err error) {
@@ -148,6 +150,7 @@ func (r *renderer) legend() {
 			"balloon": `<span class="bal">1</span>`,
 			"flag":    `<span class="flag" data-n="1"></span>`,
 			"diamond": `<span class="dia" data-n="1"></span>`,
+			"dot":     `<span class="disc" data-n="1"></span>`,
 			"more":    moreMark,
 		}[m.kind]
 		r.w("    <span class=\"sym\">%s%s</span>\n", sample, esc(m.label))
@@ -349,16 +352,22 @@ func (r *renderer) inline(t text) string {
 				s = s[2+len(n):]
 				continue
 			}
-		case strings.HasPrefix(s, "▲"), strings.HasPrefix(s, "◆"):
+		case strings.HasPrefix(s, "▲"), strings.HasPrefix(s, "◆"), strings.HasPrefix(s, "●"):
 			n := leading(s[len("▲"):], isDigit)
 			if n != "" {
 				mark := fmt.Sprintf(`class="dia" data-n="%s"`, n)
-				if strings.HasPrefix(s, "▲") {
+				switch {
+				case strings.HasPrefix(s, "▲"):
 					mark = fmt.Sprintf(`class="flag" data-n="%[1]s" data-note="%[1]s"`, n)
 					if !r.doc.notes[n] {
 						r.fail(t.line, fmt.Errorf("%w ▲%s", ErrUnknownNote, n))
 					}
-				} else if !r.doc.diamonds[n] {
+				case strings.HasPrefix(s, "●"):
+					mark = fmt.Sprintf(`class="disc" data-n="%s"`, n)
+					if !r.doc.dots[n] {
+						r.fail(t.line, fmt.Errorf("%w ●%s", ErrUnknownDot, n))
+					}
+				case !r.doc.diamonds[n]:
 					r.fail(t.line, fmt.Errorf("%w ◆%s", ErrUnknownDiamond, n))
 				}
 				fmt.Fprintf(&b, `<span %s></span>`, mark)

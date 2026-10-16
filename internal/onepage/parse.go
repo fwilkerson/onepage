@@ -16,6 +16,7 @@ type text struct {
 
 type doc struct {
 	title    string
+	theme    text
 	actors   []actorDecl
 	lines    []legendDecl
 	marks    []legendDecl
@@ -23,6 +24,7 @@ type doc struct {
 	parts    map[string]string
 	notes    map[string]bool
 	diamonds map[string]bool
+	dots     map[string]bool
 	details  map[string]bool
 	more     int
 }
@@ -171,7 +173,7 @@ type fence struct {
 }
 
 func parse(path string, src []byte) (*doc, []error) {
-	p := &parser{path: path, doc: &doc{parts: map[string]string{}, notes: map[string]bool{}, diamonds: map[string]bool{}, details: map[string]bool{}}}
+	p := &parser{path: path, doc: &doc{parts: map[string]string{}, notes: map[string]bool{}, diamonds: map[string]bool{}, dots: map[string]bool{}, details: map[string]bool{}}}
 	lines := strings.Split(strings.TrimSuffix(string(src), "\n"), "\n")
 	for i, line := range lines {
 		n := i + 1
@@ -377,23 +379,29 @@ func (p *parser) top(kw, rest string, n int) {
 	switch kw {
 	case "title":
 		d.title = rest
+	case "theme":
+		if rest == "" {
+			p.fail(n, fmt.Errorf("%w: theme takes the path of a stylesheet", ErrFields))
+			return
+		}
+		if d.theme.s != "" {
+			p.fail(n, fmt.Errorf("%w: theme, first on line %d", ErrDuplicate, d.theme.line))
+			return
+		}
+		d.theme = text{rest, n}
 	case "actor":
 		w := strings.Fields(rest)
 		if len(w) < 3 || !actorName.MatchString(w[0]) {
 			p.fail(n, fmt.Errorf("%w: actor takes a lowercase name, a colour and words", ErrFields))
 			return
 		}
-		if reserved[w[0]] || strings.HasPrefix(w[0], "heavy-") {
+		if reserved[w[0]] || strings.HasPrefix(w[0], "heavy-") || strings.HasPrefix(w[0], "theme-") {
 			p.fail(n, fmt.Errorf("%w: actor %q", ErrReserved, w[0]))
-			return
-		}
-		if _, ok := palette[w[1]]; !ok {
-			p.fail(n, fmt.Errorf("%w %q: the palette has amber, cyan, green and violet", ErrUnknownColour, w[1]))
 			return
 		}
 		d.actors = append(d.actors, actorDecl{w[0], w[1], strings.Join(w[2:], " "), n})
 	case "line", "mark":
-		kinds := map[string][]string{"line": {"arrow", "dotted", "planned"}, "mark": {"balloon", "flag", "diamond", "more"}}[kw]
+		kinds := map[string][]string{"line": {"arrow", "dotted", "planned"}, "mark": {"balloon", "flag", "diamond", "dot", "more"}}[kw]
 		w := strings.Fields(rest)
 		actor := ""
 		if len(w) > 1 && strings.HasPrefix(w[1], "@") {
@@ -460,8 +468,10 @@ func (p *parser) titleblock(b *titleblock, kw string, t text) {
 		}
 		el := c.els[len(c.els)-1]
 		el.rows = append(el.rows, [3]text(append(f, text{})[:3]))
-		if n, ok := strings.CutPrefix(f[0].s, "◆"); kw == "item" && ok && n != "" && leading(n, isDigit) == n {
-			p.doc.diamonds[n] = true
+		for mark, seen := range map[string]map[string]bool{"◆": p.doc.diamonds, "●": p.doc.dots} {
+			if n, ok := strings.CutPrefix(f[0].s, mark); kw == "item" && ok && n != "" && leading(n, isDigit) == n {
+				seen[n] = true
+			}
 		}
 	default:
 		p.unknown(kw, t.line)

@@ -27,6 +27,7 @@ const (
 type run struct {
 	s, class string
 	marks    []drawnMark
+	faces    faces
 }
 
 const chipPad, chipGap = 4, 3
@@ -34,11 +35,11 @@ const chipPad, chipGap = 4, 3
 func (rn run) advance() float64 {
 	switch rn.kind() {
 	case "chip":
-		return max(18, textWidth(rn.s, "tc")+2*chipPad)
+		return max(18, textWidth(rn.s, "tc", rn.faces)+2*chipPad)
 	case "page":
 		return 13
 	}
-	return textWidth(rn.s, rn.class)
+	return textWidth(rn.s, rn.class, rn.faces)
 }
 
 func (rn run) kind() string {
@@ -64,9 +65,17 @@ func (l sline) reach(x float64) ([]float64, float64) {
 	return at, x
 }
 
-type drawnMark struct{ class, n, actor string }
+type drawnMark struct {
+	class, n, actor string
+	big             bool
+}
 
-func (m drawnMark) width() int { return map[string]int{"dia": 16, "flag": 18, "bal": 20}[m.class] }
+func (m drawnMark) width() int {
+	if m.big {
+		return 22
+	}
+	return map[string]int{"dia": 16, "disc": 16, "flag": 18, "bal": 20}[m.class]
+}
 
 type sline struct {
 	line        int
@@ -130,7 +139,7 @@ func (r *renderer) swimlane(s *swimlane) {
 			width = max(width, l.width())
 		}
 		p.natural = int(math.Ceil(width)) + pad
-		p.h = height(p.lines, it.kind == "text")
+		p.h = r.height(p.lines, it.kind == "text")
 		if it.kind == "stack" {
 			p.natural += stackX
 			p.h += stackY
@@ -229,7 +238,7 @@ func (r *renderer) swimlane(s *swimlane) {
 		return w
 	}
 	for i, ph := range s.phases {
-		if need := 34 + int(math.Ceil(textWidth(ph.title.s, "tc"))) + 8 - 2*phasePad - inner(i); need > 0 {
+		if need := r.phaseTitle(ph) + int(math.Ceil(textWidth(ph.title.s, "tc", r.faces))) + 8 - 2*phasePad - inner(i); need > 0 {
 			grow(i, 0, len(cols[i])-1, need)
 		}
 	}
@@ -245,9 +254,9 @@ func (r *renderer) swimlane(s *swimlane) {
 				}
 			}
 		}
-		labelW = max(labelW, textWidth(strings.ToUpper(l.actor.s), "tcl"))
+		labelW = max(labelW, textWidth(strings.ToUpper(l.actor.s), "tcl", r.faces))
 		for _, t := range labels[i] {
-			labelW = max(labelW, textWidth(t.s, "ts"))
+			labelW = max(labelW, textWidth(t.s, "ts", r.faces))
 		}
 	}
 	left := 16 + int(math.Ceil(labelW)) + 14
@@ -347,8 +356,12 @@ func (r *renderer) swimlane(s *swimlane) {
 		if i > 0 {
 			r.w("  <path d=\"M%d,4 V%d\" class=\"sep\"/>\n", starts[i], height)
 		}
-		r.w("  <circle cx=\"%d\" cy=\"15\" r=\"10\" class=\"bx\"/><text x=\"%d\" y=\"19\" class=\"tc mid\">%s</text><text x=\"%d\" y=\"19\" class=\"tc\">%s</text>\n",
-			starts[i]+18, starts[i]+18, esc(ph.n.s), starts[i]+34, esc(ph.title.s))
+		if r.themed {
+			r.w("  <text x=\"%d\" y=\"19\" class=\"tc\">%s</text>", starts[i]+phasePad, esc(ph.n.s))
+		} else {
+			r.w("  <circle cx=\"%d\" cy=\"15\" r=\"10\" class=\"bx\"/><text x=\"%d\" y=\"19\" class=\"tc mid\">%s</text>", starts[i]+18, starts[i]+18, esc(ph.n.s))
+		}
+		r.w("<text x=\"%d\" y=\"19\" class=\"tc\">%s</text>\n", starts[i]+r.phaseTitle(ph), esc(ph.title.s))
 	}
 
 	for _, p := range items {
@@ -376,7 +389,7 @@ func (r *renderer) swimlane(s *swimlane) {
 		class, marker := arrowStyle(rt.from.lane.s, rt.a.style)
 		need := 0
 		if marker != "" {
-			need = room(class)
+			need = r.faces.room(class)
 		}
 		d, ok := way(rt.from.rect(), rt.to.rect(), others, seen[k], count[k], need)
 		if !ok {
@@ -404,6 +417,13 @@ func (r *renderer) swimlane(s *swimlane) {
 	r.w("</svg>\n")
 }
 
+func (r *renderer) phaseTitle(ph *phase) int {
+	if r.themed {
+		return phasePad + int(math.Ceil(textWidth(ph.n.s, "tc", r.faces))) + 10
+	}
+	return 34
+}
+
 func widen(sizes []int, filled []bool, first, last, need int) {
 	var at []int
 	for c := first; c <= last; c++ {
@@ -424,8 +444,8 @@ func widen(sizes []int, filled []bool, first, last, need int) {
 	}
 }
 
-func height(lines []sline, bare bool) int {
-	h := 16 + 8
+func (r *renderer) height(lines []sline, bare bool) int {
+	h := r.faces.top + 8
 	if bare {
 		h = 11 + 4
 	}
@@ -463,7 +483,7 @@ func (r *renderer) item(p *placed) {
 	default:
 		r.w("  <rect x=\"%d\" y=\"%d\" width=\"%d\" height=\"%d\" class=\"%s\"/>\n", x, y, w, h, class)
 	}
-	base := y + 16
+	base := y + r.faces.top
 	if p.kind == "text" {
 		base = y + 11
 	}
@@ -550,19 +570,24 @@ func (r *renderer) markSVG(m drawnMark, x, y int) string {
 	switch m.class {
 	case "dia":
 		return fmt.Sprintf(`<g class="dia" transform="translate(%d,%d)"><path d="M0,-8 L8,0 L0,8 L-8,0 Z"/><text y="3.5">%s</text></g>`, x, y, m.n)
+	case "disc":
+		return fmt.Sprintf(`<g class="disc" transform="translate(%d,%d)"><circle r="7"/><text y="3.5">%s</text></g>`, x, y, m.n)
 	case "flag":
+		if m.big {
+			return fmt.Sprintf(`<g class="flag" data-note="%s" transform="translate(%d,%d)"><path d="M0,-10 L11,10 L-11,10 Z"/><text y="8">%[1]s</text></g>`, m.n, x, y)
+		}
 		return fmt.Sprintf(`<g class="flag" data-note="%s" transform="translate(%d,%d)"><path d="M0,-8 L9,8 L-9,8 Z"/><text y="6">%[1]s</text></g>`, m.n, x, y)
 	}
 	return fmt.Sprintf(`<g class="%s" data-item="%s" transform="translate(%d,%d)"><circle r="10"/><text y="4">%s</text></g>`, strings.TrimSpace("bal "+m.actor), m.n, x, y, m.n)
 }
 
 func (r *renderer) sline(t text, base, lane string) sline {
-	l := sline{line: t.line, size: 15}
+	l := sline{line: t.line, size: r.faces.pitch}
 	switch {
 	case base == "ti":
-		l.size = 14
+		l.size = r.faces.aside
 	case strings.ContainsFunc(t.s, unicode.IsUpper) && !strings.ContainsFunc(t.s, unicode.IsLower):
-		base, l.size = "tc", 17
+		base, l.size = "tc", r.faces.heading
 		if lane != "" {
 			base += " f-" + lane
 		}
@@ -580,7 +605,7 @@ func (r *renderer) sline(t text, base, lane string) sline {
 		l.trail = append(l.trail, rn.marks...)
 	}
 	for _, m := range slices.Concat(l.lead, l.trail) {
-		l.size = max(l.size, map[bool]int{true: 22, false: 18}[m.class == "bal"])
+		l.size = max(l.size, map[bool]int{true: 22, false: 18}[m.class == "bal" || m.big])
 	}
 	return l
 }
@@ -589,7 +614,7 @@ func (r *renderer) runs(l *sline, s string, line int, class, colour string) {
 	var b strings.Builder
 	flush := func() {
 		if b.Len() > 0 {
-			l.runs = append(l.runs, run{s: b.String(), class: strings.TrimSpace(class + " " + colour)})
+			l.runs = append(l.runs, run{s: b.String(), class: strings.TrimSpace(class + " " + colour), faces: r.faces})
 			b.Reset()
 		}
 	}
@@ -613,7 +638,7 @@ func (r *renderer) runs(l *sline, s string, line int, class, colour string) {
 		case s[0] == '`':
 			if end := strings.IndexByte(s[1:], '`'); end >= 0 {
 				flush()
-				l.runs = append(l.runs, run{s: s[1 : 1+end], class: strings.TrimSpace(styled(class, "tm") + " " + colour)})
+				l.runs = append(l.runs, run{s: s[1 : 1+end], class: strings.TrimSpace(styled(class, "tm") + " " + colour), faces: r.faces})
 				s = s[2+end:]
 				continue
 			}
@@ -631,7 +656,7 @@ func (r *renderer) runs(l *sline, s string, line int, class, colour string) {
 			for _, rn := range in.runs {
 				words.WriteString(rn.s)
 			}
-			l.runs = append(l.runs, run{strings.TrimSpace(words.String()), "chip", slices.Concat(in.lead, in.trail)})
+			l.runs = append(l.runs, run{strings.TrimSpace(words.String()), "chip", slices.Concat(in.lead, in.trail), r.faces})
 			s = s[end+1:]
 			continue
 		case strings.HasPrefix(s, "📄"):
@@ -650,7 +675,7 @@ func (r *renderer) runs(l *sline, s string, line int, class, colour string) {
 					continue
 				}
 			}
-		case s[0] == '{', strings.HasPrefix(s, "▲"), strings.HasPrefix(s, "◆"):
+		case s[0] == '{', strings.HasPrefix(s, "▲"), strings.HasPrefix(s, "◆"), strings.HasPrefix(s, "●"):
 			var m drawnMark
 			var size int
 			if s[0] == '{' {
@@ -660,16 +685,22 @@ func (r *renderer) runs(l *sline, s string, line int, class, colour string) {
 					if !ok {
 						r.fail(line, fmt.Errorf("%w {%s}", ErrUnknownPart, n))
 					}
-					m, size = drawnMark{"bal", n, actor}, 2+len(n)
+					m, size = drawnMark{class: "bal", n: n, actor: actor}, 2+len(n)
 				}
 			} else if n := leading(s[len("▲"):], isDigit); n != "" {
-				m, size = drawnMark{"dia", n, ""}, len("▲")+len(n)
-				if strings.HasPrefix(s, "▲") {
-					m.class = "flag"
+				m, size = drawnMark{class: "dia", n: n}, len("▲")+len(n)
+				switch {
+				case strings.HasPrefix(s, "▲"):
+					m.class, m.big = "flag", r.themed
 					if !r.doc.notes[n] {
 						r.fail(line, fmt.Errorf("%w ▲%s", ErrUnknownNote, n))
 					}
-				} else if !r.doc.diamonds[n] {
+				case strings.HasPrefix(s, "●"):
+					m.class = "disc"
+					if !r.doc.dots[n] {
+						r.fail(line, fmt.Errorf("%w ●%s", ErrUnknownDot, n))
+					}
+				case !r.doc.diamonds[n]:
 					r.fail(line, fmt.Errorf("%w ◆%s", ErrUnknownDiamond, n))
 				}
 			}
@@ -772,7 +803,14 @@ var glyphs = [...]int{
 	556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584,
 }
 
-func textWidth(s, class string) float64 {
+type faces struct {
+	sans, tech                             float64
+	mono, label, caps, body, small         float64
+	top, pitch, aside, heading, labelPitch int
+	dotted                                 float64
+}
+
+func textWidth(s, class string, f faces) float64 {
 	em := 0.0
 	n := 0
 	for _, c := range s {
@@ -789,15 +827,15 @@ func textWidth(s, class string) float64 {
 	fields := strings.Fields(class)
 	switch {
 	case slices.Contains(fields, "tm"):
-		return 11.5 * 0.61 * float64(n)
+		return f.mono * 0.61 * float64(n)
 	case slices.Contains(fields, "tcl"):
-		return 17 * (em*0.86 + 0.1*float64(n))
+		return f.label * (em*0.86 + 0.1*float64(n)) * (1 + f.tech)
 	case slices.Contains(fields, "tc"):
-		return 12 * (em*0.86 + 0.08*float64(n))
+		return f.caps * (em*0.86 + 0.08*float64(n)) * (1 + f.tech)
 	case slices.Contains(fields, "tb"):
-		return 12 * em * 1.07 * 1.07
+		return f.body * em * 1.07 * 1.07 * (1 + f.sans)
 	case slices.Contains(fields, "ts"):
-		return 11.5 * em * 1.07
+		return f.small * em * 1.07 * (1 + f.sans)
 	}
-	return 12 * em * 1.07
+	return f.body * em * 1.07 * (1 + f.sans)
 }
